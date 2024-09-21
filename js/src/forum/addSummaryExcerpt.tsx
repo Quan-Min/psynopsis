@@ -49,7 +49,7 @@ export default function addSummaryExcerpt() {
             // console.log("源文件1：",excerptPost)
             // console.log("源文件2：",excerptPost.contentHtml())
 
-            const contentWithoutLinks = excerptPost.contentHtml().replace(/https:\/\/(pan|baidu)\.[^\s]+/g, '进入详情查看');
+            const contentWithoutLinks = excerptPost.contentHtml().replace(/https:\/\/(pan|baidu|alipan|xuelei|115)\.[^\s]+/g, '进入详情查看');
 
             // 调用字符串解析方法，将图片和文本分开处理
             const modifiedHtml = restructureHtmlWithStrings(contentWithoutLinks);
