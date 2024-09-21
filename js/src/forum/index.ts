@@ -1,4 +1,10 @@
 import app from 'flarum/forum/app';
+import Post from 'flarum/forum/components/Post';
+import { extend } from "flarum/common/extend";
+
+import DiscussionListState from "flarum/forum/states/DiscussionListState";
+
+
 
 import addSummaryExcerpt from './addSummaryExcerpt';
 import addUserPreference from './addUserPreference';
