@@ -1,6 +1,5 @@
 import { extend } from 'flarum/common/extend';
 import app from 'flarum/forum/app';
-import DiscussionListState from 'flarum/forum/states/DiscussionListState';
 import DiscussionListItem from 'flarum/forum/components/DiscussionListItem';
 import { truncate } from 'flarum/common/utils/string';
 import ItemList from 'flarum/common/utils/ItemList';
@@ -47,18 +46,18 @@ export default function addSummaryExcerpt() {
             if (excerptLength === 0) { return; }
 
             if (!excerptPost?.contentHtml?.()) return;
-            console.log("源文件1：",excerptPost)
-            console.log("源文件2：",excerptPost.contentHtml())
+            // console.log("源文件1：",excerptPost)
+            // console.log("源文件2：",excerptPost.contentHtml())
 
             const contentWithoutLinks = excerptPost.contentHtml().replace(/https:\/\/(pan|baidu)\.[^\s]+/g, '进入详情查看');
 
             // 调用字符串解析方法，将图片和文本分开处理
             const modifiedHtml = restructureHtmlWithStrings(contentWithoutLinks);
 
-
+            
             const content = m.trust(truncate(modifiedHtml, excerptLength));
 
-            console.log("源文件content：",content)
+            // console.log("源文件content：",content)
             if (excerptPost) {
                 const noImgs = <div className="custom-i1"></div>;
                 const hasImages = /<img[^>]*>/i.test(excerptPost.contentHtml());
@@ -92,51 +91,60 @@ export default function addSummaryExcerpt() {
     extendDiscussionListItem();
 }
 
-// 解析和处理 HTML 的函数，结合上面的字符串解析方法
-// function restructureHtmlWithStrings(htmlString) {
-//     // 提取第一个 <p> 标签中的图片内容
-//     const imgPattern = /<p>(<img[^>]*>.*?<\/p>)/i;
-//     const imageContent = htmlString.match(imgPattern) ? htmlString.match(imgPattern)[1] : ''; // 提取出包含图片的部分
-
-//     // 提取图片之后的所有内容
-//     const restContent = htmlString.replace(imgPattern, ''); // 删除图片部分，保留剩下的内容
-
-//     // 为图片部分添加 class
-//     const imageWithClass = imageContent ? `<div class="image-container">${imageContent}</div>` : '';
-
-//     // 为其余内容添加 class
-//     const contentWithClass = `<div class="content-container">${restContent}</div>`;
-
-//     // 合并并返回新的结构
-//     return imageWithClass + contentWithClass;
-// }
 
 function restructureHtmlWithStrings(htmlString) {
-    // 匹配带有 <IMG> 标签的图片
-    const imgPattern = /<p><IMG[^>]*src="([^"]*)"[^>]*><\/IMG><\/p>/i;
+    const imgPattern = /<p><img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*><\/p>/i;
     const imageMatch = htmlString.match(imgPattern);
     let imageUrl = '';
     let imageContent = '';
+    let altText = '';
 
     if (imageMatch) {
         imageUrl = imageMatch[1];
-        imageContent = `<img src="${imageUrl}" alt="image">`;
+        altText = imageMatch[2];
+
+        // 提取宽度和长度
+        const [width, height] = altText.split('x').map(Number);
+        const imgStyle = height > width ? `style=" object-fit: contain !important;"` : `style=" object-fit: cover !important;"` ;
+
+        imageContent = `<img ${imgStyle} src="${imageUrl}" alt="${altText}">`;
+
+        
+        // 判断长度是否大于宽度并设置样式
+        const style = height > width ? `style="background-size:100% 100%; background-image: url('${imageUrl}?x-oss-process=image/resize,h_10,m_lfit');"` : '';
+
+        const imageWithClass = `<div class="image-container" ${style}>${imageContent}</div>`;
+        
+        const restContent = htmlString.replace(imgPattern, '');
+        const contentWithClass = `<div class="content-container">${restContent}</div>`;
+
+        return imageWithClass + contentWithClass;
+    } else {
+        return htmlString;
     }
+}
 
-    // 删除图片部分，保留剩余内容
-    const restContent = htmlString.replace(imgPattern, '');
 
-    // 为图片部分添加背景样式
-    const imageWithClass = imageUrl ? `<div class="image-container"><div class="blur-background" style="background-image: url('${imageUrl}');"></div>${imageContent}</div>` : '';
-    
+
+
+// 解析和处理 HTML 的函数，结合上面的字符串解析方法
+function restructureHtmlWithStrings2(htmlString) {
+    // 提取第一个 <p> 标签中的图片内容
+    const imgPattern = /<p>(<img[^>]*>.*?<\/p>)/i;
+    const imageContent = htmlString.match(imgPattern) ? htmlString.match(imgPattern)[1] : ''; // 提取出包含图片的部分
+
+    // 提取图片之后的所有内容
+    const restContent = htmlString.replace(imgPattern, ''); // 删除图片部分，保留剩下的内容
+
+    // 为图片部分添加 class
+    const imageWithClass = imageContent ? `<div class="image-container">${imageContent}</div>` : '';
+
     // 为其余内容添加 class
     const contentWithClass = `<div class="content-container">${restContent}</div>`;
 
     // 合并并返回新的结构
     return imageWithClass + contentWithClass;
 }
-
-
 
 // function restructureHtmlWithStrings(htmlString) {
 //     // 提取第一个 <p> 标签中的图片内容
