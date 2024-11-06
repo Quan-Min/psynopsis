@@ -47,18 +47,43 @@ export default function addSummaryExcerpt() {
             if (excerptLength === 0) { return; }
 
             if (!excerptPost?.contentHtml?.()) return;
-            console.log("源文件1：",excerptPost)
-            console.log("源文件2：",excerptPost.contentHtml())
+            // console.log("源文件adasda：", excerptPost.contentHtml())
 
-            const contentWithoutLinks = excerptPost.contentHtml().replace(/https:\/\/(pan|baidu)\.[^\s]+/g, '进入详情查看');
+            // 移除付费标签
+            let noPayContent = excerptPost.contentHtml().replace(/\[pay\]/g, '').replace(/\[\/pay\]/g, '');
 
+            // 替换未支付的内容块
+            const payBlockPattern = /<blockquote style="text-align:center;padding:30px"><div><p>付费内容<\/p><\/div><\/blockquote>/g;
+            const replacementHtml = '<p>链接：<a href="进入详情查看" rel="ugc nofollow">进入详情查看</a></p>';
+            noPayContent = noPayContent.replace(payBlockPattern, replacementHtml);
+
+
+
+            // 付费用户内容移除
+            const pay2seePattern = /<div class="pay2see_gray"><div class="pay2see_header_gray">付费内容 \[权限设置可见\]<\/div>/g;
+            noPayContent = noPayContent.replace(pay2seePattern, '');
+            console.log("源文件 aaaaaa", noPayContent)
+            // 购买的内容 
+            const pay2seePattern2 = /<div class="pay2see_green">\s*<div class="pay2see_header_green">\s*购买的内容\s*<\/div>/g;
+            noPayContent = noPayContent.replace(pay2seePattern2, '');
+
+            const pay2seePatternGray = /<div class="pay2see_gray"><div class="pay2see_header_gray">付费内容 \[作者可见\]<\/div>/g;
+            noPayContent = noPayContent.replace(pay2seePatternGray, '');
+
+            console.log("源文件 bbbbbbb：", noPayContent)
+
+            noPayContent = noPayContent.replace(/<\/div>/g, '');
+
+
+
+            const contentWithoutLinks = noPayContent.replace(/https:\/\/(pan|baidu)\.[^\s]+/g, '进入详情查看');
+            // console.log("contentWithoutLinks", contentWithoutLinks)
             // 调用字符串解析方法，将图片和文本分开处理
             const modifiedHtml = restructureHtmlWithStrings(contentWithoutLinks);
 
-
             const content = m.trust(truncate(modifiedHtml, excerptLength));
 
-            console.log("源文件content：",content)
+            // console.log("源文件content：", content)
             if (excerptPost) {
                 const noImgs = <div className="custom-i1"></div>;
                 const hasImages = /<img[^>]*>/i.test(excerptPost.contentHtml());
@@ -113,22 +138,46 @@ export default function addSummaryExcerpt() {
 
 function restructureHtmlWithStrings(htmlString) {
     // 匹配带有 <IMG> 标签的图片
-    const imgPattern = /<p><IMG[^>]*src="([^"]*)"[^>]*><\/IMG><\/p>/i;
+    // const imgPattern = /<p><img[^>]*src="([^"]*)"[^>]*><\/img><\/p>/i;
+    // const imgPattern = /<p><img[^>]*src="([^"]*)"[^>]*><\/p>/i;
+    const imgPattern = /<img[^>]*src="([^"]*)"[^>]*>/i;
+
     const imageMatch = htmlString.match(imgPattern);
     let imageUrl = '';
     let imageContent = '';
+    // console.log("Image Match:", imageMatch);
 
     if (imageMatch) {
         imageUrl = imageMatch[1];
+        // console.log("imageUrl:", imageUrl);
         imageContent = `<img src="${imageUrl}" alt="image">`;
     }
 
     // 删除图片部分，保留剩余内容
-    const restContent = htmlString.replace(imgPattern, '');
+    let restContent = htmlString.replace(imgPattern, '');
+
+    // 移除所有 <div> 标签，但保留其中的内容
+    restContent = restContent.replace(/<div[^>]*>|<\/div>/g, '');
+
+    // 移除特定的 <div> 元素
+    // restContent = restContent.replace(/<div class="ptr-block ptr-render ptr-paid".*?>(.*?)<\/div>/s, (match, p1) => {
+    //     return p1; // 保留 <p> 的内容
+    // });
+    // console.log("源文件filteredContent：", filteredContent)
 
     // 为图片部分添加背景样式
-    const imageWithClass = imageUrl ? `<div class="image-container"><div class="blur-background" style="background-image: url('${imageUrl}');"></div>${imageContent}</div>` : '';
-    
+    const imageWithClass = imageUrl ? `
+            <div class="image-container">
+                <div class="blur-background" style="
+                    background-image: url('${imageUrl}?x-oss-process=image/resize,h_10,m_lfit');
+                    background-size: 100% 100%;
+                ">
+                    ${imageContent}
+                </div>
+            </div>
+        ` : '';
+
+
     // 为其余内容添加 class
     const contentWithClass = `<div class="content-container">${restContent}</div>`;
 
